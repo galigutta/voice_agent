@@ -59,8 +59,17 @@ if [ -f "$PIDFILE" ]; then
         echo "$RESULT" | xclip -selection c
     fi
     
-    # Paste directly to the active window
-    xdotool key Ctrl+v
+    # Get the active window class to determine if it's a terminal
+    WINDOW_CLASS=$(xprop -id $(xdotool getactivewindow) WM_CLASS 2>/dev/null | grep -o '"[^"]*"' | tr '[:upper:]' '[:lower:]')
+    
+    # Check if it's a terminal window (case-insensitive match)
+    if echo "$WINDOW_CLASS" | grep -qiE '(terminal|konsole|xterm|rxvt|kitty|alacritty|gnome-terminal|terminator|tilix|urxvt|st-256color|wezterm|foot)'; then
+        # For terminals, use Ctrl+Shift+v
+        xdotool key Ctrl+Shift+v
+    else
+        # For non-terminals, use normal paste
+        xdotool key Ctrl+v
+    fi
     
     # Clean up audio file
     rm "$AUDIOFILE" 2>/dev/null

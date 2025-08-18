@@ -38,14 +38,12 @@ if [ -f "$PIDFILE" ]; then
     cat "$RESULTFILE" | xclip -selection c
 
     # Get the active window class to determine if it's a terminal
-    WINDOW_CLASS=$(xprop -id $(xdotool getactivewindow) WM_CLASS 2>/dev/null | grep -o '".*"' | tail -n 1 | sed 's/"//g')
+    WINDOW_CLASS=$(xprop -id $(xdotool getactivewindow) WM_CLASS 2>/dev/null | grep -o '"[^"]*"' | tr '[:upper:]' '[:lower:]')
     
-    # For terminals, use xdotool type to directly type the content
-    if [[ "$WINDOW_CLASS" =~ (terminal|konsole|xterm|rxvt|kitty|alacritty) ]]; then
-        # Small delay to ensure window focus
-        sleep 0.1
-        # Read the result and type it directly
-        xdotool type "$(cat $RESULTFILE)"
+    # Check if it's a terminal window (case-insensitive match)
+    if echo "$WINDOW_CLASS" | grep -qiE '(terminal|konsole|xterm|rxvt|kitty|alacritty|gnome-terminal|terminator|tilix|urxvt|st-256color|wezterm|foot)'; then
+        # For terminals, use Ctrl+Shift+v
+        xdotool key Ctrl+Shift+v
     else
         # For non-terminals, use normal paste
         xdotool key Ctrl+v
