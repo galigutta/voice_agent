@@ -20,9 +20,10 @@ echo "Lowercase window class values:"
 echo "$WINDOW_CLASS_LOWER"
 echo ""
 
-# Check if it's a terminal
-if echo "$WINDOW_CLASS_LOWER" | grep -qiE '(terminal|konsole|xterm|rxvt|kitty|alacritty|gnome-terminal|terminator|tilix|urxvt|st-256color|wezterm|foot)'; then
-    echo "✓ Terminal detected! Will use Ctrl+Shift+v for pasting"
+# Check if it's a terminal or VSCode
+if echo "$WINDOW_CLASS_LOWER" | grep -qiE '(terminal|konsole|xterm|rxvt|kitty|alacritty|gnome-terminal|terminator|tilix|urxvt|st-256color|wezterm|foot|termius|code|vscode|codium|code-oss)'; then
+    echo "✓ Terminal/VSCode detected! Will use Ctrl+Shift+v for pasting"
+    echo "  (VSCode is included because its integrated terminal uses Ctrl+Shift+v)"
 else
     echo "✗ Not detected as terminal. Will use Ctrl+v for pasting"
     echo ""
@@ -35,7 +36,7 @@ echo "Testing clipboard paste in 3 seconds..."
 echo "Sample text" | xclip -selection c
 sleep 3
 
-if echo "$WINDOW_CLASS_LOWER" | grep -qiE '(terminal|konsole|xterm|rxvt|kitty|alacritty|gnome-terminal|terminator|tilix|urxvt|st-256color|wezterm|foot)'; then
+if echo "$WINDOW_CLASS_LOWER" | grep -qiE '(terminal|konsole|xterm|rxvt|kitty|alacritty|gnome-terminal|terminator|tilix|urxvt|st-256color|wezterm|foot|termius|code|vscode|codium|code-oss)'; then
     xdotool key Ctrl+Shift+v
 else
     xdotool key Ctrl+v
