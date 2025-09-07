@@ -76,7 +76,7 @@ if [ -f "$PIDFILE" ]; then
     WINDOW_CLASS=$(xprop -id $(xdotool getactivewindow) WM_CLASS 2>/dev/null | grep -o '"[^"]*"' | tr '[:upper:]' '[:lower:]')
     
     # Check if it's a terminal window or VSCode (case-insensitive match)
-    if echo "$WINDOW_CLASS" | grep -qiE '(terminal|konsole|xterm|rxvt|kitty|alacritty|gnome-terminal|terminator|tilix|urxvt|st-256color|wezterm|foot|code|vscode|codium|code-oss)'; then
+    if echo "$WINDOW_CLASS" | grep -qiE '(terminal|konsole|xterm|rxvt|kitty|alacritty|gnome-terminal|terminator|tilix|urxvt|st-256color|wezterm|foot|code|vscode|codium|code-oss|termius)'; then
         # For terminals, use Ctrl+Shift+v
         xdotool key Ctrl+Shift+v
     else

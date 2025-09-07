@@ -34,16 +34,21 @@ def convert_to_terminal_command(transcribed_text):
     Clean up any filler words and interpret the intent correctly."""
     
     try:
-        completion = client.beta.chat.completions.parse(
-            model="gpt-4.1-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": transcribed_text},
-            ],
-            response_format=TerminalCommand
+        response = client.responses.create(
+            model="gpt-5",
+            input=f"{system_prompt}\n\nUser request: {transcribed_text}",
+            reasoning={
+                "effort": "low"
+            }
         )
-        result = completion.choices[0].message.parsed
-        return result.command
+        # Extract the text from the response output
+        for item in response.output:
+            if hasattr(item, 'content') and item.content:
+                for content_item in item.content:
+                    if hasattr(content_item, 'text'):
+                        return content_item.text.strip()
+        # Fallback if structure is unexpected
+        return transcribed_text
     except Exception:
         # If GPT processing fails, return the original text
         return transcribed_text
