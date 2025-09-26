@@ -38,50 +38,48 @@ if [ -f "$PIDFILE" ]; then
     rm "$PIDFILE"
 
     [ $DEBUG -eq 1 ] && log_message "Transcribing audio..."
-    
+
     # First, transcribe the audio using whisper_client
     TRANSCRIBED=$($TRANSCRIBE_CMD 2>&1)
     TRANSCRIBE_EXIT_CODE=$?
-    
+
     if [ $TRANSCRIBE_EXIT_CODE -ne 0 ] || [[ "$TRANSCRIBED" == Error:* ]]; then
         # Transcription failed
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         ERROR_LOGFILE="logs/error_${TIMESTAMP}.log"
         echo "Error transcribing audio. See log for details." | tee -a "$ERROR_LOGFILE"
         echo "$TRANSCRIBED" >> "$ERROR_LOGFILE"
-        echo "$TRANSCRIBED" | xclip -selection c
+        # Type the error message
+        xdotool type "$TRANSCRIBED"
     else
         # Transcription succeeded, now process with GPT to convert to terminal command
         [ $DEBUG -eq 1 ] && log_message "Transcribed: $TRANSCRIBED"
+
+        # Capture the currently selected text (if any) for context
+        SELECTED_TEXT=$(xclip -selection primary -o 2>/dev/null)
+
+        [ $DEBUG -eq 1 ] && [ -n "$SELECTED_TEXT" ] && log_message "Selected text: $SELECTED_TEXT"
         [ $DEBUG -eq 1 ] && log_message "Converting to terminal command..."
-        
-        # Process with GPT to convert to terminal command (no clipboard needed)
-        RESULT=$(/home/vamsi/miniconda3/bin/python "$GPT_SCRIPT" "$TRANSCRIBED" 2>&1)
-        
+
+        # Process with GPT to convert to terminal command, passing selected text if available
+        if [ -n "$SELECTED_TEXT" ]; then
+            RESULT=$(/home/vamsi/miniconda3/bin/python "$GPT_SCRIPT" "$TRANSCRIBED" "$SELECTED_TEXT" 2>&1)
+        else
+            RESULT=$(/home/vamsi/miniconda3/bin/python "$GPT_SCRIPT" "$TRANSCRIBED" 2>&1)
+        fi
+
         GPT_EXIT_CODE=$?
-        
+
         if [ $GPT_EXIT_CODE -ne 0 ]; then
             # GPT processing failed, use original transcription
             [ $DEBUG -eq 1 ] && log_message "GPT processing failed, using original transcription"
             RESULT="$TRANSCRIBED"
         fi
-        
+
         [ $DEBUG -eq 1 ] && log_message "Final result: $RESULT"
-        
-        # Copy result to clipboard
-        echo "$RESULT" | xclip -selection c
-    fi
-    
-    # Get the active window class to determine if it's a terminal
-    WINDOW_CLASS=$(xprop -id $(xdotool getactivewindow) WM_CLASS 2>/dev/null | grep -o '"[^"]*"' | tr '[:upper:]' '[:lower:]')
-    
-    # Check if it's a terminal window or VSCode (case-insensitive match)
-    if echo "$WINDOW_CLASS" | grep -qiE '(terminal|konsole|xterm|rxvt|kitty|alacritty|gnome-terminal|terminator|tilix|urxvt|st-256color|wezterm|foot|code|vscode|codium|code-oss|termius)'; then
-        # For terminals, use Ctrl+Shift+v
-        xdotool key Ctrl+Shift+v
-    else
-        # For non-terminals, use normal paste
-        xdotool key Ctrl+v
+
+        # Type the result directly
+        xdotool type "$RESULT"
     fi
     
     # Clean up audio file

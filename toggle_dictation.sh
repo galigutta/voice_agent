@@ -52,24 +52,11 @@ if [ -f "$PIDFILE" ]; then
         ERROR_LOGFILE="voice_agent/logs/error_${TIMESTAMP}.log"
         echo "Error transcribing audio. See log for details." | tee -a "$ERROR_LOGFILE"
         echo "$RESULT" >> "$ERROR_LOGFILE"
-        # Copy the error to clipboard to make it visible
-        echo "$RESULT" | xclip -selection c
+        # Type the error message
+        xdotool type "$RESULT"
     else
-        # Success - copy to clipboard
-        echo "$RESULT" | xclip -selection c
-    fi
-    
-    # Get the active window class to determine if it's a terminal
-    WINDOW_CLASS=$(xprop -id $(xdotool getactivewindow) WM_CLASS 2>/dev/null | grep -o '"[^"]*"' | tr '[:upper:]' '[:lower:]')
-    
-    # Check if it's a terminal window or VSCode (case-insensitive match)
-    # VSCode/Code is included because its integrated terminal uses Ctrl+Shift+V
-    if echo "$WINDOW_CLASS" | grep -qiE '(terminal|konsole|xterm|rxvt|kitty|alacritty|gnome-terminal|terminator|tilix|urxvt|st-256color|wezterm|foot|termius|code|vscode|codium|code-oss|termius)'; then
-        # For terminals, use Ctrl+Shift+v
-        xdotool key Ctrl+Shift+v
-    else
-        # For non-terminals, use normal paste
-        xdotool key Ctrl+v
+        # Success - type the result directly
+        xdotool type "$RESULT"
     fi
     
     # Clean up audio file
