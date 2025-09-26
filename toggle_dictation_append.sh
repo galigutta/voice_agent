@@ -50,7 +50,7 @@ if [ -f "$PIDFILE" ]; then
         echo "Error transcribing audio. See log for details." | tee -a "$ERROR_LOGFILE"
         echo "$TRANSCRIBED" >> "$ERROR_LOGFILE"
         # Type the error message
-        xdotool type "$TRANSCRIBED"
+        xdotool type --delay 1 "$TRANSCRIBED"
     else
         # Transcription succeeded, now process with GPT to convert to terminal command
         [ $DEBUG -eq 1 ] && log_message "Transcribed: $TRANSCRIBED"
@@ -79,7 +79,7 @@ if [ -f "$PIDFILE" ]; then
         [ $DEBUG -eq 1 ] && log_message "Final result: $RESULT"
 
         # Type the result directly
-        xdotool type "$RESULT"
+        xdotool type --delay 1 "$RESULT"
     fi
     
     # Clean up audio file

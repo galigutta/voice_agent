@@ -53,10 +53,10 @@ if [ -f "$PIDFILE" ]; then
         echo "Error transcribing audio. See log for details." | tee -a "$ERROR_LOGFILE"
         echo "$RESULT" >> "$ERROR_LOGFILE"
         # Type the error message
-        xdotool type "$RESULT"
+        xdotool type --delay 1 "$RESULT"
     else
         # Success - type the result directly
-        xdotool type "$RESULT"
+        xdotool type --delay 1 "$RESULT"
     fi
     
     # Clean up audio file
