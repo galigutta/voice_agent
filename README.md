@@ -7,15 +7,15 @@ A high-performance Linux voice dictation system using OpenAI's Whisper for speec
 - **Whisper Server/Client**: Persistent server (`whisper_server.py`) keeps the Whisper model loaded, lightweight client (`whisper_client.py`) sends requests via Unix socket
 - **Two Processing Modes**:
   - **Simple Mode** (`toggle_dictation.sh`): Direct transcription using Whisper only
-  - **AI-Enhanced Mode** (`toggle_dictation_append.sh`): Transcription + GPT-4 context-aware processing
+  - **Terminal Command Mode** (`toggle_dictation_append.sh`): Voice-to-terminal command conversion with GPT-5
 - **Auto-Recovery**: Client automatically starts server if needed, cleans up stale processes
 
 ## Features
 
 - **Optimized Performance**: Server keeps Whisper model in memory (no reload delays)
 - **Smart Transcription**: Uses OpenAI's Whisper "small.en" model for accurate speech-to-text
-- **Context-Aware AI Processing**: GPT-4 transforms voice commands based on context (e.g., "list files" → `ls -la` in terminals)
-- **Clipboard Integration**: Can process voice input with clipboard context
+- **Voice-to-Command Processing**: GPT-5 converts speech to Ubuntu terminal commands (e.g., "list files" → `ls -la`)
+- **Selected Text Context**: Uses selected text as context for smarter command generation
 - **Automatic Pasting**: Results are automatically pasted into your active window
 - **Robust Error Handling**: Includes logging, auto-recovery, and detailed troubleshooting guide
 
@@ -67,33 +67,33 @@ Then reload: `xbindkeys --poll-rc`
 3. Press hotkey again to stop and transcribe
 4. Text is automatically pasted
 
-### AI-Enhanced Mode (Ctrl+Alt+A)
+### Terminal Command Mode (Ctrl+Alt+A)
 1. Press hotkey to start recording
-2. Speak your command/request
+2. Speak your terminal command request
 3. Press hotkey again to stop
-4. GPT-4 processes your speech with context awareness
-5. Result is automatically pasted
+4. GPT-5 converts speech to Ubuntu terminal command
+5. Command is automatically pasted
 
 ### Examples
-- In terminal: Say "list all files" → pastes `ls -la`
-- In editor: Say "write a function to calculate factorial" → pastes actual code
-- Anywhere: Natural dictation with automatic cleanup of filler words
+- **Simple Mode**: Natural dictation with automatic cleanup of filler words
+- **Terminal Command Mode**: Say "list all files" → pastes `ls -la`, or "install docker" → pastes `sudo apt-get install docker.io`
+- **With Selected Text**: Select "myfile.txt", say "delete this" → pastes `rm myfile.txt`
 
 ## How It Works
 
 1. **Recording**: Uses `arecord` to capture audio from microphone
 2. **Server Management**: Client checks/starts Whisper server as needed
 3. **Transcription**: Audio sent to server via Unix socket for processing
-4. **AI Processing** (append mode only): Transcribed text processed by GPT-4
+4. **Command Generation** (terminal mode only): Transcribed text converted to terminal commands by GPT-5
 5. **Output**: Result copied to clipboard and auto-pasted with `xdotool`
 
 ## File Structure
 
 - `whisper_server.py` - Persistent server that loads and manages Whisper model
 - `whisper_client.py` - Lightweight client that communicates with server
-- `process_speech.py` - GPT-4 processing for context-aware transformations
+- `process_with_gpt.py` - GPT-5 processing for voice-to-terminal command conversion
 - `toggle_dictation.sh` - Simple transcription mode script
-- `toggle_dictation_append.sh` - AI-enhanced mode script
+- `toggle_dictation_append.sh` - Terminal command mode script
 - `TROUBLESHOOTING.md` - Detailed troubleshooting guide
 
 ## Logs & Debugging
