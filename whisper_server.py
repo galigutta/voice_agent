@@ -100,7 +100,22 @@ else:
 # Load the whisper model once at startup (this is the key optimization)
 print(f"Loading whisper model 'small.en' on {device}...")
 model = whisper.load_model("small.en", device=device)
+current_device = device
 print("Model loaded and ready!")
+
+# Function to reload model on different device
+def reload_model_on_device(target_device):
+    """Reload whisper model on specified device"""
+    global model, current_device
+    try:
+        logger.info(f"Reloading model on {target_device} device")
+        model = whisper.load_model("small.en", device=target_device)
+        current_device = target_device
+        logger.info(f"Model successfully reloaded on {target_device}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to reload model on {target_device}: {e}")
+        return False
 
 # Write PID file for easy cleanup later
 with open(PID_FILE, "w") as f:
@@ -146,11 +161,17 @@ def get_command(text):
 
 
 def transcribe_audio(audio_file, clipboard_content=None):
-    """Transcribe audio file using the pre-loaded whisper model"""
+    """Transcribe audio file using the pre-loaded whisper model with automatic CPU fallback"""
+    global current_device
+
     try:
         logger.info(f"Transcribing audio file: {audio_file}")
         result = model.transcribe(audio_file)
         text = result["text"].strip()
+
+        # Add subtle indicator for CPU usage (extra dot)
+        if current_device == "cpu":
+            text += "."
 
         if clipboard_content:
             param = f"<context>{clipboard_content}</context> <command>{text}</command>"
@@ -159,8 +180,38 @@ def transcribe_audio(audio_file, clipboard_content=None):
         else:
             return text
     except Exception as e:
-        logger.error(f"Error transcribing audio: {e}")
-        return f"Error transcribing: {str(e)}"
+        error_str = str(e)
+        logger.error(f"Error transcribing audio: {error_str}")
+
+        # Check if it's a CUDA error and we're currently using GPU
+        if ("CUDA" in error_str or "unspecified launch failure" in error_str) and current_device == "cuda":
+            logger.warning("CUDA error detected - attempting CPU fallback")
+
+            # Try to reload model on CPU
+            if reload_model_on_device("cpu"):
+                logger.info("Successfully fell back to CPU - retrying transcription")
+                try:
+                    # Retry transcription with CPU model
+                    result = model.transcribe(audio_file)
+                    text = result["text"].strip()
+
+                    # Add subtle indicator for CPU usage (extra dot)
+                    text += "."
+
+                    if clipboard_content:
+                        param = f"<context>{clipboard_content}</context> <command>{text}</command>"
+                        response = get_command(param)
+                        return response.response
+                    else:
+                        return text
+                except Exception as cpu_error:
+                    logger.error(f"CPU transcription also failed: {cpu_error}")
+                    return f"Error transcribing (both GPU and CPU failed): {str(cpu_error)}"
+            else:
+                logger.error("Failed to reload model on CPU")
+                return f"Error transcribing: {error_str}"
+        else:
+            return f"Error transcribing: {error_str}"
 
 
 def handle_client(client_socket):

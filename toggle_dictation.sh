@@ -54,13 +54,25 @@ if [ -f "$PIDFILE" ]; then
     
     # Check if the command failed
     if [ $EXIT_CODE -ne 0 ] || [[ "$RESULT" == Error:* ]]; then
-        # Always log errors, even if DEBUG=0
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-        ERROR_LOGFILE="voice_agent/logs/error_${TIMESTAMP}.log"
-        echo "Error transcribing audio. See log for details." | tee -a "$ERROR_LOGFILE"
-        echo "$RESULT" >> "$ERROR_LOGFILE"
-        # Type the error message
-        xdotool type --delay 1 "$RESULT"
+        # Check if it's a CUDA error and try recovery
+        if [[ "$RESULT" == *"CUDA error"* ]] || [[ "$RESULT" == *"unspecified launch failure"* ]]; then
+            notify-send "Voice Agent" "CUDA error detected - attempting recovery..."
+            if /home/vamsi/voice_agent/cuda_recovery.sh recover; then
+                notify-send "Voice Agent" "CUDA recovered - please try again"
+                xdotool type --delay 1 "CUDA recovered - please try again"
+            else
+                notify-send "Voice Agent" "CUDA recovery failed - reboot may be needed"
+                xdotool type --delay 1 "CUDA recovery failed - reboot may be needed"
+            fi
+        else
+            # Always log errors, even if DEBUG=0
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            ERROR_LOGFILE="voice_agent/logs/error_${TIMESTAMP}.log"
+            echo "Error transcribing audio. See log for details." | tee -a "$ERROR_LOGFILE"
+            echo "$RESULT" >> "$ERROR_LOGFILE"
+            # Type the error message
+            xdotool type --delay 1 "$RESULT"
+        fi
     else
         # Success - type the result directly
         xdotool type --delay 1 "$RESULT"
