@@ -18,8 +18,15 @@ else
     LOGFILE="/dev/null"
 fi
 
+# Get the appropriate Python command
+PYTHON_CMD=$(/home/vamsi/voice_agent/get_python_cmd.sh)
+if [ $? -ne 0 ]; then
+    notify-send "Voice Agent Error" "No suitable Python environment found"
+    exit 1
+fi
+
 # Use the whisper client for transcription (same as toggle_dictation.sh)
-TRANSCRIBE_CMD="/home/vamsi/miniconda3/bin/python /home/vamsi/voice_agent/whisper_client.py $AUDIOFILE"
+TRANSCRIBE_CMD="$PYTHON_CMD /home/vamsi/voice_agent/whisper_client.py $AUDIOFILE"
 
 # GPT processing script
 GPT_SCRIPT="/home/vamsi/voice_agent/process_with_gpt.py"
@@ -63,9 +70,9 @@ if [ -f "$PIDFILE" ]; then
 
         # Process with GPT to convert to terminal command, passing selected text if available
         if [ -n "$SELECTED_TEXT" ]; then
-            RESULT=$(/home/vamsi/miniconda3/bin/python "$GPT_SCRIPT" "$TRANSCRIBED" "$SELECTED_TEXT" 2>&1)
+            RESULT=$("$PYTHON_CMD" "$GPT_SCRIPT" "$TRANSCRIBED" "$SELECTED_TEXT" 2>&1)
         else
-            RESULT=$(/home/vamsi/miniconda3/bin/python "$GPT_SCRIPT" "$TRANSCRIBED" 2>&1)
+            RESULT=$("$PYTHON_CMD" "$GPT_SCRIPT" "$TRANSCRIBED" 2>&1)
         fi
 
         GPT_EXIT_CODE=$?

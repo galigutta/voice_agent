@@ -81,9 +81,25 @@ class CleanedText(BaseModel):
     response: str
 
 
+# Check CUDA availability and fail fast if corrupted
+import torch
+if torch.cuda.is_available():
+    try:
+        # Test CUDA functionality
+        test_tensor = torch.zeros(1).cuda()
+        logger.info(f"CUDA is available. Using GPU: {torch.cuda.get_device_name()}")
+        device = "cuda"
+    except Exception as e:
+        logger.error(f"CUDA is available but not functional: {e}")
+        logger.error("CUDA context appears corrupted. Please restart the server with GPU reset.")
+        sys.exit(1)
+else:
+    logger.warning("CUDA not available. Using CPU (this will be slower)")
+    device = "cpu"
+
 # Load the whisper model once at startup (this is the key optimization)
-print("Loading whisper model 'small.en'...")
-model = whisper.load_model("small.en")
+print(f"Loading whisper model 'small.en' on {device}...")
+model = whisper.load_model("small.en", device=device)
 print("Model loaded and ready!")
 
 # Write PID file for easy cleanup later

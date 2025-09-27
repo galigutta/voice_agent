@@ -19,8 +19,15 @@ else
     LOGFILE="/dev/null"
 fi
 
-# Use the client script with absolute path instead of tilde expansion
-TRANSCRIBE_CMD="/home/vamsi/miniconda3/bin/python /home/vamsi/voice_agent/whisper_client.py $AUDIOFILE"
+# Get the appropriate Python command
+PYTHON_CMD=$(/home/vamsi/voice_agent/get_python_cmd.sh)
+if [ $? -ne 0 ]; then
+    notify-send "Voice Agent Error" "No suitable Python environment found"
+    exit 1
+fi
+
+# Use the client script with detected Python environment
+TRANSCRIBE_CMD="$PYTHON_CMD /home/vamsi/voice_agent/whisper_client.py $AUDIOFILE"
 
 # Function to log messages to both console and log file
 log_message() {
