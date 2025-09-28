@@ -167,7 +167,7 @@ def transcribe_audio(audio_file, clipboard_content=None):
     try:
         logger.info(f"Transcribing audio file: {audio_file}")
         result = model.transcribe(audio_file)
-        text = result["text"].strip()
+        text = result["text"].strip() + " "
 
         # Add subtle indicator for CPU usage (extra dot)
         if current_device == "cpu":
@@ -193,7 +193,7 @@ def transcribe_audio(audio_file, clipboard_content=None):
                 try:
                     # Retry transcription with CPU model
                     result = model.transcribe(audio_file)
-                    text = result["text"].strip()
+                    text = result["text"].strip() + " "
 
                     # Add subtle indicator for CPU usage (extra dot)
                     text += "."
