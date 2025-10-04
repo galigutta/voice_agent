@@ -20,14 +20,8 @@ else
 fi
 
 # Get the appropriate Python command
-PYTHON_CMD=$(/home/vamsi/voice_agent/get_python_cmd.sh)
-if [ $? -ne 0 ]; then
-    notify-send "Voice Agent Error" "No suitable Python environment found"
-    exit 1
-fi
-
-# Use the client script with detected Python environment
-TRANSCRIBE_CMD="$PYTHON_CMD /home/vamsi/voice_agent/whisper_client.py $AUDIOFILE"
+GET_PYTHON_CMD="/home/vamsi/voice_agent/get_python_cmd.sh"
+CLIENT_SCRIPT="/home/vamsi/voice_agent/whisper_client.py"
 
 # Function to log messages to both console and log file
 log_message() {
@@ -38,6 +32,12 @@ log_message() {
 }
 
 if [ -f "$PIDFILE" ]; then
+    PYTHON_CMD=$($GET_PYTHON_CMD)
+    if [ $? -ne 0 ]; then
+        notify-send "Voice Agent Error" "No suitable Python environment found"
+        exit 1
+    fi
+
     # We are currently recording. Time to stop and transcribe.
     REC_PID=$(cat "$PIDFILE")
     kill "$REC_PID" 2>/dev/null
@@ -46,7 +46,7 @@ if [ -f "$PIDFILE" ]; then
     [ $DEBUG -eq 1 ] && log_message "Transcribing audio..."
     
     # Transcribe the audio, capturing both stdout and stderr
-    RESULT=$($TRANSCRIBE_CMD 2>&1)
+    RESULT=$("$PYTHON_CMD" "$CLIENT_SCRIPT" "$AUDIOFILE" 2>&1)
     EXIT_CODE=$?
     
     # Only log the result if debugging is enabled
@@ -54,25 +54,13 @@ if [ -f "$PIDFILE" ]; then
     
     # Check if the command failed
     if [ $EXIT_CODE -ne 0 ] || [[ "$RESULT" == Error:* ]]; then
-        # Check if it's a CUDA error and try recovery
-        if [[ "$RESULT" == *"CUDA error"* ]] || [[ "$RESULT" == *"unspecified launch failure"* ]]; then
-            notify-send "Voice Agent" "CUDA error detected - attempting recovery..."
-            if /home/vamsi/voice_agent/cuda_recovery.sh recover; then
-                notify-send "Voice Agent" "CUDA recovered - please try again"
-                xdotool type --delay 1 "CUDA recovered - please try again"
-            else
-                notify-send "Voice Agent" "CUDA recovery failed - reboot may be needed"
-                xdotool type --delay 1 "CUDA recovery failed - reboot may be needed"
-            fi
-        else
-            # Always log errors, even if DEBUG=0
-            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-            ERROR_LOGFILE="voice_agent/logs/error_${TIMESTAMP}.log"
-            echo "Error transcribing audio. See log for details." | tee -a "$ERROR_LOGFILE"
-            echo "$RESULT" >> "$ERROR_LOGFILE"
-            # Type the error message
-            xdotool type --delay 1 "$RESULT"
-        fi
+        # Always log errors, even if DEBUG=0
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        ERROR_LOGFILE="voice_agent/logs/error_${TIMESTAMP}.log"
+        echo "Error transcribing audio. See log for details." | tee -a "$ERROR_LOGFILE"
+        echo "$RESULT" >> "$ERROR_LOGFILE"
+        # Type the error message
+        xdotool type --delay 1 "$RESULT"
     else
         # Success - type the result directly
         xdotool type --delay 1 "$RESULT"

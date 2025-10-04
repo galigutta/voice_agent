@@ -18,15 +18,9 @@ else
     LOGFILE="/dev/null"
 fi
 
-# Get the appropriate Python command
-PYTHON_CMD=$(/home/vamsi/voice_agent/get_python_cmd.sh)
-if [ $? -ne 0 ]; then
-    notify-send "Voice Agent Error" "No suitable Python environment found"
-    exit 1
-fi
-
-# Use the whisper client for transcription (same as toggle_dictation.sh)
-TRANSCRIBE_CMD="$PYTHON_CMD /home/vamsi/voice_agent/whisper_client.py $AUDIOFILE"
+# Paths reused across both phases
+GET_PYTHON_CMD="/home/vamsi/voice_agent/get_python_cmd.sh"
+CLIENT_SCRIPT="/home/vamsi/voice_agent/whisper_client.py"
 
 # GPT processing script
 GPT_SCRIPT="/home/vamsi/voice_agent/process_with_gpt.py"
@@ -39,6 +33,12 @@ log_message() {
 }
 
 if [ -f "$PIDFILE" ]; then
+    PYTHON_CMD=$($GET_PYTHON_CMD)
+    if [ $? -ne 0 ]; then
+        notify-send "Voice Agent Error" "No suitable Python environment found"
+        exit 1
+    fi
+
     # We are currently recording. Time to stop and transcribe.
     REC_PID=$(cat "$PIDFILE")
     kill "$REC_PID" 2>/dev/null
@@ -47,7 +47,7 @@ if [ -f "$PIDFILE" ]; then
     [ $DEBUG -eq 1 ] && log_message "Transcribing audio..."
 
     # First, transcribe the audio using whisper_client
-    TRANSCRIBED=$($TRANSCRIBE_CMD 2>&1)
+    TRANSCRIBED=$("$PYTHON_CMD" "$CLIENT_SCRIPT" "$AUDIOFILE" 2>&1)
     TRANSCRIBE_EXIT_CODE=$?
 
     if [ $TRANSCRIBE_EXIT_CODE -ne 0 ] || [[ "$TRANSCRIBED" == Error:* ]]; then
