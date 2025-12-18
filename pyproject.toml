@@ -1,0 +1,16 @@
+[project]
+name = "voice-agent"
+version = "0.1.0"
+description = "Whisper-based voice agent for dictation"
+requires-python = ">=3.10"
+dependencies = [
+    "openai-whisper",
+    "openai",
+    "python-dotenv",
+    "pydantic",
+    "psutil",
+]
+
+[project.scripts]
+whisper-server = "whisper_server:main"
+whisper-client = "whisper_client:send_transcription_request"
