@@ -6,6 +6,7 @@ DEBUG=0
 PIDFILE=/tmp/dictation.pid
 AUDIOFILE=/tmp/dictation.wav
 RESULTFILE=/tmp/dictation_result.txt
+RECORD_DEVICE=${VOICE_AGENT_RECORD_DEVICE:-pipewire}
 
 # Create logs directory if needed (even if DEBUG=0, for potential error logs)
 mkdir -p logs
@@ -44,14 +45,14 @@ if [ -f "$PIDFILE" ]; then
     rm "$PIDFILE"
 
     [ $DEBUG -eq 1 ] && log_message "Transcribing audio..."
-    
+
     # Transcribe the audio, capturing both stdout and stderr
     RESULT=$("$PYTHON_CMD" "$CLIENT_SCRIPT" "$AUDIOFILE" 2>&1)
     EXIT_CODE=$?
-    
+
     # Only log the result if debugging is enabled
     [ $DEBUG -eq 1 ] && echo "$RESULT" >> "$LOGFILE"
-    
+
     # Check if the command failed
     if [ $EXIT_CODE -ne 0 ] || [[ "$RESULT" == Error:* ]]; then
         # Always log errors, even if DEBUG=0
@@ -65,13 +66,13 @@ if [ -f "$PIDFILE" ]; then
         # Success - type the result directly
         xdotool type --delay 1 "$RESULT"
     fi
-    
+
     # Clean up audio file
     rm "$AUDIOFILE" 2>/dev/null
 else
     # We are not recording. Start recording.
     [ $DEBUG -eq 1 ] && log_message "Starting recording..."
-    # Using higher quality settings might improve transcription
-    arecord -f cd -r 44100 -q "$AUDIOFILE" &
+    # Use the PipeWire ALSA device (default source) so system audio settings choose the microphone.
+    arecord -D "$RECORD_DEVICE" -f cd -r 44100 -q "$AUDIOFILE" &
     echo $! > "$PIDFILE"
 fi

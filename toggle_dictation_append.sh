@@ -6,6 +6,7 @@ DEBUG=0
 PIDFILE=/tmp/dictation.pid
 AUDIOFILE=/tmp/dictation.wav
 RESULTFILE=/tmp/dictation_result.txt
+RECORD_DEVICE=${VOICE_AGENT_RECORD_DEVICE:-pipewire}
 
 # Create logs directory if needed
 mkdir -p logs
@@ -88,13 +89,13 @@ if [ -f "$PIDFILE" ]; then
         # Type the result directly
         xdotool type --delay 1 "$RESULT"
     fi
-    
+
     # Clean up audio file
     rm "$AUDIOFILE" 2>/dev/null
 else
     # We are not recording. Start recording.
     [ $DEBUG -eq 1 ] && log_message "Starting recording..."
-    # Using same recording settings as toggle_dictation.sh
-    arecord -f cd -r 44100 -q "$AUDIOFILE" &
+    # Use the PipeWire ALSA device (default source) so system audio settings choose the microphone.
+    arecord -D "$RECORD_DEVICE" -f cd -r 44100 -q "$AUDIOFILE" &
     echo $! > "$PIDFILE"
 fi
