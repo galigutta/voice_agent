@@ -26,6 +26,11 @@ CLIENT_SCRIPT="/home/vamsi/voice_agent/whisper_client.py"
 # GPT processing script
 GPT_SCRIPT="/home/vamsi/voice_agent/process_with_gpt.py"
 
+# Map typographic punctuation to ASCII so xdotool never has to remap a scratch keycode
+asciify() {
+    sed -e "s/[‘’ʼ]/'/g" -e 's/[“”]/"/g' -e 's/[–—]/-/g' -e 's/…/.../g' -e 's/\xC2\xA0/ /g'
+}
+
 # Function to log messages
 log_message() {
     if [ $DEBUG -eq 1 ] || [[ "$1" == Error:* ]]; then
@@ -58,7 +63,7 @@ if [ -f "$PIDFILE" ]; then
         echo "Error transcribing audio. See log for details." | tee -a "$ERROR_LOGFILE"
         echo "$TRANSCRIBED" >> "$ERROR_LOGFILE"
         # Type the error message
-        xdotool type --delay 1 "$TRANSCRIBED"
+        xdotool type --delay 1 "$(printf %s "$TRANSCRIBED" | asciify)"
     else
         # Transcription succeeded, now process with GPT to convert to terminal command
         [ $DEBUG -eq 1 ] && log_message "Transcribed: $TRANSCRIBED"
@@ -87,7 +92,7 @@ if [ -f "$PIDFILE" ]; then
         [ $DEBUG -eq 1 ] && log_message "Final result: $RESULT"
 
         # Type the result directly
-        xdotool type --delay 1 "$RESULT"
+        xdotool type --delay 1 "$(printf %s "$RESULT" | asciify)"
     fi
 
     # Clean up audio file

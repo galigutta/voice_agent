@@ -24,6 +24,11 @@ fi
 GET_PYTHON_CMD="/home/vamsi/voice_agent/get_python_cmd.sh"
 CLIENT_SCRIPT="/home/vamsi/voice_agent/whisper_client.py"
 
+# Map typographic punctuation to ASCII so xdotool never has to remap a scratch keycode
+asciify() {
+    sed -e "s/[‘’ʼ]/'/g" -e 's/[“”]/"/g' -e 's/[–—]/-/g' -e 's/…/.../g' -e 's/\xC2\xA0/ /g'
+}
+
 # Function to log messages to both console and log file
 log_message() {
     # Only log if debugging is enabled or it's an error message
@@ -61,10 +66,10 @@ if [ -f "$PIDFILE" ]; then
         echo "Error transcribing audio. See log for details." | tee -a "$ERROR_LOGFILE"
         echo "$RESULT" >> "$ERROR_LOGFILE"
         # Type the error message
-        xdotool type --delay 1 "$RESULT"
+        xdotool type --delay 1 "$(printf %s "$RESULT" | asciify)"
     else
         # Success - type the result directly
-        xdotool type --delay 1 "$RESULT"
+        xdotool type --delay 1 "$(printf %s "$RESULT" | asciify)"
     fi
 
     # Clean up audio file
