@@ -2,6 +2,7 @@
 import os
 import sys
 import json
+import re
 import socket
 import signal
 import logging
@@ -97,9 +98,55 @@ else:
     logger.warning("CUDA not available. Using CPU (this will be slower)")
     device = "cpu"
 
+MODEL_NAME = "turbo"
+
+# Domain vocabulary fed to Whisper as initial_prompt to bias spelling of technical terms
+VOCAB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vocab.txt")
+
+
+def load_vocab_prompt():
+    try:
+        with open(VOCAB_FILE) as f:
+            lines = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+    except FileNotFoundError:
+        logger.warning(f"Vocab file not found: {VOCAB_FILE}")
+        return None
+    prose = [line[2:] for line in lines if line.startswith("> ")]
+    terms = [line for line in lines if not line.startswith("> ")]
+    logger.info(f"Loaded {len(terms)} vocab terms")
+    return " ".join(prose + [", ".join(terms) + "."])
+
+
+VOCAB_PROMPT = load_vocab_prompt()
+
+# Misrecognitions the prompt can't fully prevent; only unambiguous phrases, since bare "cloud" is a real word
+CORRECTIONS = [
+    (re.compile(r"\b(?:cloud|claude)\.md\b", re.IGNORECASE), "CLAUDE.md"),
+    (re.compile(r"\b(?:cloud|claude) code\b", re.IGNORECASE), "Claude Code"),
+]
+
+
+def apply_corrections(text):
+    for pattern, replacement in CORRECTIONS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+def load_model(target_device):
+    """Load the model; on GPU keep fp16 weights (~1.6 GB) instead of whisper's default fp32 (~3.2 GB)"""
+    if target_device == "cpu":
+        return whisper.load_model(MODEL_NAME, device="cpu")
+    m = whisper.load_model(MODEL_NAME, device="cpu").half()
+    # whisper's LayerNorm runs in fp32 and expects fp32 weights
+    for module in m.modules():
+        if isinstance(module, torch.nn.LayerNorm):
+            module.float()
+    return m.to(target_device)
+
+
 # Load the whisper model once at startup (this is the key optimization)
-print(f"Loading whisper model 'small.en' on {device}...")
-model = whisper.load_model("small.en", device=device)
+print(f"Loading whisper model '{MODEL_NAME}' on {device}...")
+model = load_model(device)
 current_device = device
 print("Model loaded and ready!")
 
@@ -109,7 +156,7 @@ def reload_model_on_device(target_device):
     global model, current_device
     try:
         logger.info(f"Reloading model on {target_device} device")
-        model = whisper.load_model("small.en", device=target_device)
+        model = load_model(target_device)
         current_device = target_device
         logger.info(f"Model successfully reloaded on {target_device}")
         return True
@@ -166,8 +213,8 @@ def transcribe_audio(audio_file, clipboard_content=None):
 
     try:
         logger.info(f"Transcribing audio file: {audio_file}")
-        result = model.transcribe(audio_file)
-        text = result["text"].strip() + " "
+        result = model.transcribe(audio_file, language="en", initial_prompt=VOCAB_PROMPT)
+        text = apply_corrections(result["text"].strip()) + " "
 
         # Add subtle indicator for CPU usage (extra dot)
         if current_device == "cpu":
@@ -192,8 +239,8 @@ def transcribe_audio(audio_file, clipboard_content=None):
                 logger.info("Successfully fell back to CPU - retrying transcription")
                 try:
                     # Retry transcription with CPU model
-                    result = model.transcribe(audio_file)
-                    text = result["text"].strip() + " "
+                    result = model.transcribe(audio_file, language="en", initial_prompt=VOCAB_PROMPT)
+                    text = apply_corrections(result["text"].strip()) + " "
 
                     # Add subtle indicator for CPU usage (extra dot)
                     text += "."

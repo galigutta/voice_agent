@@ -13,7 +13,7 @@ A high-performance Linux voice dictation system using OpenAI's Whisper for speec
 ## Features
 
 - **Optimized Performance**: Server keeps Whisper model in memory (no reload delays)
-- **Smart Transcription**: Uses OpenAI's Whisper "small.en" model for accurate speech-to-text
+- **Smart Transcription**: Uses OpenAI's Whisper "turbo" (large-v3-turbo) model, biased toward the technical terms in `vocab.txt`
 - **Voice-to-Command Processing**: GPT-5 converts speech to Ubuntu terminal commands (e.g., "list files" → `ls -la`)
 - **Selected Text Context**: Uses selected text as context for smarter command generation
 - **Automatic Pasting**: Results are automatically pasted into your active window

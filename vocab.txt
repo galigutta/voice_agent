@@ -1,0 +1,68 @@
+# Terms passed to Whisper as initial_prompt so it spells them correctly.
+# One term per line; lines starting with # are ignored. Use the casing you want typed.
+# Whisper only reads ~224 tokens of prompt, so keep this list short and drop
+# anything it already gets right.
+# Lines starting with "> " are prose placed before the term list; a sentence
+# that uses a word in context biases Whisper more strongly than a bare term.
+
+> Notes, messages and prompts about my software projects, often for Claude in Claude Code.
+
+# AI tools and models
+Codex
+OpenAI
+Anthropic
+Opus
+Sonnet
+Gemini
+subagent
+
+# Projects and machines
+PosHub
+OffHook
+Desibites
+Cobot
+Bindaas
+Konark
+Astra
+herdr
+AIVoiceHQ
+guki.si
+lnkz.si
+sisyphus
+gpu-claw
+QNAP
+Proxmox
+restic
+Bambu
+NoMachine
+
+# Voice and telephony
+LiveKit
+Telnyx
+Twilio
+
+# Cloud and infra
+CDK
+SSM
+SNS
+EFS
+DLQ
+ASG
+us-east-1
+Cloudflare
+wrangler.toml
+Leptos
+workers-rs
+
+# Dev tooling
+worktree
+gitignore
+node_modules
+npx
+uv
+venv
+pytest
+PipeWire
+xdotool
+upsert
+e2e
