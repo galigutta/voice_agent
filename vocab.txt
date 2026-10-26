@@ -50,6 +50,7 @@ DLQ
 ASG
 us-east-1
 Cloudflare
+Vercel
 wrangler.toml
 Leptos
 workers-rs
