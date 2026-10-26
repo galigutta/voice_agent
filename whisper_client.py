@@ -62,7 +62,7 @@ def start_server_if_needed():
                         stderr=subprocess.STDOUT)
         
         # Wait for server to start
-        for i in range(30):  # wait up to 30 seconds
+        for i in range(90):  # wait up to 90 seconds (turbo model takes ~35s to load)
             if os.path.exists(SERVER_SOCKET) and is_server_running():
                 print("Server started successfully")
                 return

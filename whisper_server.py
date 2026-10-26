@@ -16,6 +16,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+SERVER_SOCKET = "/tmp/whisper_server.sock"
+PID_FILE = "/tmp/whisper_server.pid"
+
+
+def other_server_pid():
+    """Return the PID of another live whisper server, or None"""
+    try:
+        with open(PID_FILE) as f:
+            pid = int(f.read().strip())
+        if pid == os.getpid():
+            return None
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            if b"whisper_server.py" in f.read():
+                return pid
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+# Refuse to start a second server: two copies of the model don't fit on the GPU
+if __name__ == "__main__" and other_server_pid():
+    logger.info(f"Whisper server already running (PID {other_server_pid()}), exiting")
+    sys.exit(0)
+
+# Write PID file early so a server that is still loading the model blocks duplicates
+with open(PID_FILE, "w") as f:
+    f.write(str(os.getpid()))
+
 # Check for required packages
 required_packages = {
     "whisper": "openai-whisper",
@@ -72,11 +100,6 @@ except Exception as e:
     logger.error(f"Failed to initialize OpenAI client: {e}")
     print(f"Error: Failed to initialize OpenAI client: {e}")
     sys.exit(1)
-
-# Server configuration
-SERVER_SOCKET = "/tmp/whisper_server.sock"
-PID_FILE = "/tmp/whisper_server.pid"
-
 
 # Pydantic model for cleaned text
 class CleanedText(BaseModel):
@@ -185,9 +208,6 @@ def reload_model_on_device(target_device):
         logger.error(f"Failed to reload model on {target_device}: {e}")
         return False
 
-# Write PID file for easy cleanup later
-with open(PID_FILE, "w") as f:
-    f.write(str(os.getpid()))
 
 
 def clean_text(text):
@@ -333,17 +353,24 @@ def main():
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         server.bind(SERVER_SOCKET)
         server.listen(5)
+        socket_inode = os.stat(SERVER_SOCKET).st_ino
 
         # Set up signal handlers for graceful shutdown
         def handle_signal(sig, frame):
             logger.info("Received shutdown signal")
             print("Shutting down...")
             server.close()
-            if os.path.exists(SERVER_SOCKET):
-                os.unlink(SERVER_SOCKET)
-            if os.path.exists(PID_FILE):
+            # Only remove the socket and PID file if they are still ours, not a newer server's
+            try:
+                if os.stat(SERVER_SOCKET).st_ino == socket_inode:
+                    os.unlink(SERVER_SOCKET)
+            except OSError:
+                pass
+            if other_server_pid() is None and os.path.exists(PID_FILE):
                 os.unlink(PID_FILE)
-            sys.exit(0)
+            # os._exit, not sys.exit: SystemExit can be swallowed mid-request, leaving the
+            # process spinning on the closed socket while still holding GPU memory
+            os._exit(0)
 
         signal.signal(signal.SIGINT, handle_signal)
         signal.signal(signal.SIGTERM, handle_signal)
@@ -357,6 +384,9 @@ def main():
                 client_socket, _ = server.accept()
                 handle_client(client_socket)
             except Exception as e:
+                if server.fileno() == -1:
+                    logger.error("Server socket closed, exiting")
+                    os._exit(1)
                 logger.error(f"Error in server loop: {e}")
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 # Continue running even if one request fails
