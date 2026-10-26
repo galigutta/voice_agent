@@ -44,6 +44,7 @@ fi
 echo "Installing Python packages..."
 uv pip install \
   openai-whisper \
+  silero-vad \
   openai \
   python-dotenv \
   pydantic \

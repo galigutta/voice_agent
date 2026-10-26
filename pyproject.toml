@@ -5,6 +5,7 @@ description = "Whisper-based voice agent for dictation"
 requires-python = ">=3.10"
 dependencies = [
     "openai-whisper",
+    "silero-vad",
     "openai",
     "python-dotenv",
     "pydantic",

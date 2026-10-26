@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 # Check for required packages
 required_packages = {
     "whisper": "openai-whisper",
+    "silero_vad": "silero-vad",
     "pydantic": "pydantic",
     "openai": "openai",
     "dotenv": "python-dotenv",
@@ -42,6 +43,7 @@ if missing_packages:
 
 # Now that we've checked dependencies, import them
 import whisper
+from silero_vad import load_silero_vad, get_speech_timestamps
 from pydantic import BaseModel
 from openai import OpenAI
 import dotenv
@@ -150,6 +152,25 @@ model = load_model(device)
 current_device = device
 print("Model loaded and ready!")
 
+# Whisper hallucinates on silence and room noise, so only speech regions found by the VAD are transcribed
+vad_model = load_silero_vad()
+SAMPLE_RATE = 16000
+
+
+def load_speech(audio_file):
+    """Return the audio with non-speech removed, or None if the recording has no speech"""
+    audio = torch.from_numpy(whisper.load_audio(audio_file))
+    timestamps = get_speech_timestamps(audio, vad_model, sampling_rate=SAMPLE_RATE, speech_pad_ms=200)
+    if not timestamps:
+        return None
+    # Keep a short pause between speech chunks so Whisper doesn't run words together across them
+    gap = torch.zeros(int(0.3 * SAMPLE_RATE))
+    chunks = []
+    for ts in timestamps:
+        chunks += [audio[ts["start"]:ts["end"]], gap]
+    return torch.cat(chunks[:-1]).numpy()
+
+
 # Function to reload model on different device
 def reload_model_on_device(target_device):
     """Reload whisper model on specified device"""
@@ -213,7 +234,11 @@ def transcribe_audio(audio_file, clipboard_content=None):
 
     try:
         logger.info(f"Transcribing audio file: {audio_file}")
-        result = model.transcribe(audio_file, language="en", initial_prompt=VOCAB_PROMPT)
+        audio = load_speech(audio_file)
+        if audio is None:
+            logger.info("No speech detected, skipping transcription")
+            return ""
+        result = model.transcribe(audio, language="en", initial_prompt=VOCAB_PROMPT)
         text = apply_corrections(result["text"].strip()) + " "
 
         # Add subtle indicator for CPU usage (extra dot)
@@ -239,7 +264,7 @@ def transcribe_audio(audio_file, clipboard_content=None):
                 logger.info("Successfully fell back to CPU - retrying transcription")
                 try:
                     # Retry transcription with CPU model
-                    result = model.transcribe(audio_file, language="en", initial_prompt=VOCAB_PROMPT)
+                    result = model.transcribe(audio, language="en", initial_prompt=VOCAB_PROMPT)
                     text = apply_corrections(result["text"].strip()) + " "
 
                     # Add subtle indicator for CPU usage (extra dot)
