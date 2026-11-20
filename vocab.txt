@@ -67,3 +67,6 @@ PipeWire
 xdotool
 upsert
 e2e
+
+# People
+Revanth
